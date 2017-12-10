@@ -1,0 +1,162 @@
+
+// You can check on your device after a successful
+// connection here: https://shiftr.io/try.
+// https://github.com/256dpi/arduino-mqtt
+
+#include <M5Stack.h>
+#include <WiFi.h>
+#include <ESPmDNS.h>
+#include <WiFiClient.h>
+#include "Free_Fonts.h"
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#include <MQTTClient.h>
+
+//=====dallastemp=============
+#define ONE_WIRE_BUS 5
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
+
+//---------แก้ user,password WIFI-------------
+const char ssid[] = "GreatODev";
+const char pass[] = "1683vios";
+//-------------------------------------------
+WiFiClient net;
+MQTTClient client;
+
+float t = 0;
+String temp;
+String temp1;
+unsigned long lastMillis = 0;
+unsigned long targetTime = 0; // Used for testing draw times
+
+void setup() {
+  m5.begin();
+  sensors.begin();
+  M5.startupLogo();
+  WiFi.begin(ssid, pass);
+
+  // Note: Local domain names (e.g. "Computer.local" on OSX) are not supported by Arduino.
+  // You need to set the IP address directly.
+  client.begin("greatodev.ddns.net", net);
+  client.onMessage(messageReceived);
+
+  connect();
+}
+
+void connect() {
+  Serial.print("checking wifi...");
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(1000);
+  }
+
+  Serial.print("\nMQTTconnecting...");
+  while (!client.connect("arduino", "try", "try")) {
+    Serial.print(".");
+    delay(1000);
+  }
+
+  Serial.println("\nMQTTconnected!");
+
+  client.subscribe("/hello/m51");
+  // client.unsubscribe("/hello/m51");
+}
+
+void loop() {
+
+  client.loop();
+  delay(10);  // <- fixes some issues with WiFi stability
+
+  if (!client.connected()) {
+    connect();
+  }
+
+  // publish a message roughly every second.
+  if (millis() - lastMillis > 30000) {
+    lastMillis = millis();
+
+    sensors.requestTemperatures();
+    t =  sensors.getTempCByIndex(0);
+    if (t < -10.1) {
+      delay(2000);
+      return;
+    }
+    temp = String(t, 1);
+    client.publish("/hello/m51", temp);
+
+    // New background colour
+#define TFT_BROWN 0x38E0
+    header("Using print() method", TFT_NAVY);
+    targetTime = millis();
+    M5.Lcd.setBrightness(255);
+    int xpos = 0;
+    M5.Lcd.setTextSize(3);
+    M5.Lcd.fillScreen(TFT_BROWN);
+    M5.Lcd.setTextColor(TFT_BLUE);
+    xpos = 0;  xpos += M5.Lcd.drawString("Temperature", 5, 0, 2);
+
+    M5.Lcd.setTextColor(TFT_WHITE);
+    M5.Lcd.drawString(temp, 17, 70, 6);
+
+    M5.Lcd.setTextSize(3);
+    M5.Lcd.setTextColor(TFT_YELLOW);
+    M5.Lcd.drawString("C", 288, 23, 2);
+
+    M5.Lcd.setTextSize(1);
+    M5.Lcd.setTextColor(TFT_YELLOW);
+    M5.Lcd.drawString("0", 272, 21, 2);
+
+    M5.Lcd.setTextSize(2);
+    M5.Lcd.setTextColor(TFT_GREEN);
+    M5.Lcd.drawString("WIFI Connected", 32, 210, 2);
+  }
+}
+
+void messageReceived(String &topic, String &payload) {
+  Serial.println("send to MQTT: " + topic + " : " + payload);
+}
+
+// Print the header for a display screen
+void header(const char *string, uint16_t color)
+{
+  M5.Lcd.fillScreen(color);
+  M5.Lcd.setTextSize(1);
+  M5.Lcd.setTextColor(TFT_MAGENTA, TFT_BLUE);
+  M5.Lcd.fillRect(0, 0, 320, 30, TFT_BLUE);
+  M5.Lcd.setTextDatum(TC_DATUM);
+  M5.Lcd.drawString(string, 160, 2, 4); // Font 4 for fast drawing with background
+}
+
+#ifndef LOAD_GLCD
+//ERROR_Please_enable_LOAD_GLCD_in_User_Setup
+#endif
+
+#ifndef LOAD_FONT2
+//ERROR_Please_enable_LOAD_FONT2_in_User_Setup!
+#endif
+
+#ifndef LOAD_FONT4
+//ERROR_Please_enable_LOAD_FONT4_in_User_Setup!
+#endif
+
+#ifndef LOAD_FONT6
+//ERROR_Please_enable_LOAD_FONT6_in_User_Setup!
+#endif
+
+#ifndef LOAD_FONT7
+//ERROR_Please_enable_LOAD_FONT7_in_User_Setup!
+#endif
+
+#ifndef LOAD_FONT8
+//ERROR_Please_enable_LOAD_FONT8_in_User_Setup!
+#endif
+
+#ifndef LOAD_GFXFF
+ERROR_Please_enable_LOAD_GFXFF_in_User_Setup!
+#endif
+
+
+
+
+
